@@ -12,7 +12,7 @@ A Least Recently Used (LRU) Cache organizes items in order of use, allowing you 
 
 * Strengths:
 	- Super fast accesses. LRU caches store items in order from most-recently used to least-recently used. That means both can be accessed in O(1)O(1) time.
-	- Super fast updates. Each time an item is accessed, updating the cache takes O(1)O(1) time.
+	- Super fast updates. Each time an item is accessed, updating the cache takes O(1) time.
 
 ABOUT
 ==================================================
