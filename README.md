@@ -36,13 +36,14 @@ HOW TO USE
 **RAM: 16 GB 2133 MHz LPDDR3**
 
 ```bash
-➜  gocache go test -bench=. -cpu=4 -benchmem
+➜  lru-cache git:(master) go test -bench=. -cpu=4 -benchmem
 goos: darwin
 goarch: amd64
 pkg: github.com/vardius/lru-cache
-Benchmark-4      5000000               358 ns/op               0 B/op          0 allocs/op
+BenchmarkRead-4    	 7873800	       158 ns/op	       0 B/op	       0 allocs/op
+BenchmarkWrite-4   	 8067955	       138 ns/op	       0 B/op	       0 allocs/op
 PASS
-ok      github.com/vardius/lru-cache    2.159s
+ok  	github.com/vardius/lru-cache	4.398s
 ```
 
 ## Basic example
