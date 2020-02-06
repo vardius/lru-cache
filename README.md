@@ -1,4 +1,4 @@
-Vardius - lru-cache
+🗃️ lru-cache
 ================
 [![Build Status](https://travis-ci.org/vardius/lru-cache.svg?branch=master)](https://travis-ci.org/vardius/lru-cache)
 [![Go Report Card](https://goreportcard.com/badge/github.com/vardius/lru-cache)](https://goreportcard.com/report/github.com/vardius/lru-cache)
