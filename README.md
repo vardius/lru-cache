@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/vardius/lru-cache.svg?branch=master)](https://travis-ci.org/vardius/lru-cache)
 [![Go Report Card](https://goreportcard.com/badge/github.com/vardius/lru-cache)](https://goreportcard.com/report/github.com/vardius/lru-cache)
 [![codecov](https://codecov.io/gh/vardius/lru-cache/branch/master/graph/badge.svg)](https://codecov.io/gh/vardius/lru-cache)
-[![](https://godoc.org/github.com/vardius/lru-cache?status.svg)](http://godoc.org/github.com/vardius/lru-cache)
+[![](https://godoc.org/github.com/vardius/lru-cache?status.svg)](https://pkg.go.dev/github.com/vardius/lru-cache)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/vardius/lru-cache/blob/master/LICENSE.md)
 
 <img align="right" height="180px" src="https://github.com/vardius/gorouter/blob/master/website/src/static/img/logo.png?raw=true" alt="logo" />
@@ -31,7 +31,7 @@ We are using the github [issue tracker](https://github.com/vardius/lru-cache/iss
 
 For __examples__ **visit [godoc#pkg-examples](http://godoc.org/github.com/vardius/lru-cache#pkg-examples)**
 
-For **GoDoc** reference, **visit [godoc.org](http://godoc.org/github.com/vardius/lru-cache)**
+For **GoDoc** reference, **visit [pkg.go.dev](https://pkg.go.dev/github.com/vardius/lru-cache)**
 
 🚏 HOW TO USE
 ==================================================
