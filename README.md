@@ -58,23 +58,41 @@ package main
 
 import (
 	"fmt"
+	"log"
 
     lrucache "github.com/vardius/lru-cache"
 )
 
 func main() {
-	c := lrucache.New(2)
-
-	item := c.Get("test")
-
-	if item == nil {
-		c.Set("test", 10)
+	c, err := lrucache.New("example-cache", lrucache.CacheSizeMB)
+	if err != nil {
+		log.Fatal(err)
+		return
 	}
 
-	fmt.Println(c.Get("test"))
+	item, err := c.Get("test")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	if item == nil {
+		if err = c.Set("test", []byte("value")); err != nil {
+			log.Fatal(err)
+			return
+		}
+	}
+
+	got, err := c.Get("test")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	fmt.Println(string(got))
 
 	// Output:
-	// 10
+	// value
 }
 ```
 
