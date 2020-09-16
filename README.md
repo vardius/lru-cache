@@ -64,7 +64,7 @@ import (
 )
 
 func main() {
-	c, err := lrucache.New("example-cache", lrucache.CacheSizeMB)
+	c, err := lrucache.New("example-cache", 10*lrucache.MB)
 	if err != nil {
 		log.Fatal(err)
 		return

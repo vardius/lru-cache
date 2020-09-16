@@ -50,7 +50,7 @@ func TestMaxSize(t *testing.T) {
 }
 
 func TestSequence(t *testing.T) {
-	c, err := New("test-sequence", CacheSizeMB)
+	c, err := New("test-sequence", 1*MB)
 	if err != nil {
 		t.Fatalf("failed creating new cache: %v", err)
 	}

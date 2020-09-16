@@ -7,7 +7,7 @@ import (
 func BenchmarkRead(b *testing.B) {
 	value := []byte(`test`)
 
-	c, err := New("bench-read", 10)
+	c, err := New("bench-read", 1*KB)
 	if err != nil {
 		b.Fatalf("failed creating new cache: %v", err)
 	}
@@ -28,7 +28,7 @@ func BenchmarkRead(b *testing.B) {
 func BenchmarkWrite(b *testing.B) {
 	value := []byte(`test`)
 
-	c, err := New("bench-write", 10)
+	c, err := New("bench-write", 1*KB)
 	if err != nil {
 		b.Fatalf("failed creating new cache: %v", err)
 	}

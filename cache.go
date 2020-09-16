@@ -6,12 +6,18 @@ import (
 	"sync"
 )
 
-const (
-	_ = iota
+type ByteSize uint64
 
-	CacheSizeKB uint64 = 1 << (iota * 10)
-	CacheSizeMB uint64 = 1 << (iota * 10)
-	CacheSizeGB uint64 = 1 << (iota * 10)
+const (
+	_           = iota
+	KB ByteSize = 1 << (10 * iota)
+	MB
+	GB
+	TB
+	PB
+	EB
+	ZB
+	YB
 )
 
 // Cache provides set and get functionality
@@ -33,12 +39,12 @@ type cache struct {
 	mtx      sync.Mutex
 
 	name        string
-	maxSize     uint64
-	currentSize uint64
+	maxSize     ByteSize
+	currentSize ByteSize
 }
 
 // New creates new cache
-func New(name string, maxSize uint64) (Cache, error) {
+func New(name string, maxSize ByteSize) (Cache, error) {
 	if name == "" {
 		return nil, fmt.Errorf("name cannot be empty")
 	}
@@ -86,14 +92,14 @@ func (c *cache) Set(key string, value []byte) error {
 		oldItemSize := len(item.value)
 		newItemSize := len(value)
 
-		c.currentSize -= uint64(oldItemSize)
-		c.currentSize += uint64(newItemSize)
+		c.currentSize -= ByteSize(oldItemSize)
+		c.currentSize += ByteSize(newItemSize)
 
 		item.value = value
 	} else {
 		itemSize := len(value)
 
-		c.currentSize += uint64(itemSize)
+		c.currentSize += ByteSize(itemSize)
 		c.elements[key] = c.list.PushFront(item{
 			key:   key,
 			value: value,
@@ -115,5 +121,5 @@ func (c *cache) removeLastItem() {
 	delete(c.elements, item.key)
 
 	c.list.Remove(element)
-	c.currentSize -= uint64(itemSize)
+	c.currentSize -= ByteSize(itemSize)
 }
