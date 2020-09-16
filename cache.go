@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-type ByteSize uint64
+type ByteSize float64
 
 const (
 	_           = iota
