@@ -46,10 +46,10 @@ For **GoDoc** reference, **visit [pkg.go.dev](https://pkg.go.dev/github.com/vard
 goos: darwin
 goarch: amd64
 pkg: github.com/vardius/lru-cache
-BenchmarkRead-4    	 7873800	       158 ns/op	       0 B/op	       0 allocs/op
-BenchmarkWrite-4   	 8067955	       138 ns/op	       0 B/op	       0 allocs/op
+BenchmarkRead-4         23051137                50.1 ns/op             0 B/op          0 allocs/op
+BenchmarkWrite-4        23097510                51.8 ns/op             0 B/op          0 allocs/op
 PASS
-ok  	github.com/vardius/lru-cache	4.398s
+ok  	github.com/vardius/lru-cache	2.713s
 ```
 
 ## 🏫 Basic example
