@@ -2,39 +2,39 @@ package lrucache_test
 
 import (
 	"fmt"
-	"strconv"
+	"log"
 
 	lrucache "github.com/vardius/lru-cache"
 )
 
 func Example() {
-	c := lrucache.New(10)
-
-	for i := 1; i <= 20; i++ {
-		c.Set(strconv.Itoa(i), i)
+	c, err := lrucache.New("example-cache", lrucache.CacheSizeMB)
+	if err != nil {
+		log.Fatal(err)
+		return
 	}
 
-	fmt.Println(c.Get("1"))
-	fmt.Println(c.Get("11"))
-	fmt.Println(c.Get("20"))
-
-	// Output:
-	// <nil>
-	// 11
-	// 20
-}
-
-func Example_second() {
-	c := lrucache.New(2)
-
-	item := c.Get("test")
+	item, err := c.Get("test")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 
 	if item == nil {
-		c.Set("test", 10)
+		if err = c.Set("test", []byte("value")); err != nil {
+			log.Fatal(err)
+			return
+		}
 	}
 
-	fmt.Println(c.Get("test"))
+	got, err := c.Get("test")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	fmt.Println(string(got))
 
 	// Output:
-	// 10
+	// value
 }

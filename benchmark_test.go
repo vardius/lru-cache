@@ -5,14 +5,20 @@ import (
 )
 
 func BenchmarkRead(b *testing.B) {
-	c := New(10)
+	value := []byte(`test`)
 
-	c.Set("value", 1)
+	c, err := New("bench-read", 10)
+	if err != nil {
+		b.Fatalf("failed creating new cache: %v", err)
+	}
+
+	_ = c.Set("value", value)
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			if c.Get("value") == nil {
+			item, _ := c.Get("value")
+			if item == nil {
 				b.Fail()
 			}
 		}
@@ -20,12 +26,17 @@ func BenchmarkRead(b *testing.B) {
 }
 
 func BenchmarkWrite(b *testing.B) {
-	c := New(b.N)
+	value := []byte(`test`)
+
+	c, err := New("bench-write", 10)
+	if err != nil {
+		b.Fatalf("failed creating new cache: %v", err)
+	}
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			c.Set("value", 1)
+			_ = c.Set("value", value)
 		}
 	})
 }

@@ -1,114 +1,119 @@
 package lrucache
 
 import (
+	"container/list"
+	"fmt"
 	"sync"
+)
+
+const (
+	_ = iota
+
+	CacheSizeKB uint64 = 1 << (iota * 10)
+	CacheSizeMB uint64 = 1 << (iota * 10)
+	CacheSizeGB uint64 = 1 << (iota * 10)
 )
 
 // Cache provides set and get functionality
 type Cache interface {
 	// Sets value to cache
-	Set(id string, value interface{})
+	Set(key string, value []byte) error
 	// Gets value from cache
-	Get(id string) interface{}
+	Get(key string) ([]byte, error)
 }
 
 type item struct {
-	value      interface{}
-	previousID string
-	nextID     string
+	key   string
+	value []byte
 }
 
-type items map[string]*item
-
 type cache struct {
-	size  int
-	items items
-	mtx   sync.RWMutex
+	list     *list.List
+	elements map[string]*list.Element
+	mtx      sync.Mutex
 
-	lastID  string
-	firstID string
+	name        string
+	maxSize     uint64
+	currentSize uint64
 }
 
 // New creates new cache
-func New(size int) Cache {
-	return &cache{
-		size:  size,
-		items: make(items, size),
-	}
-}
-
-func (c *cache) Get(id string) interface{} {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
-
-	i, exist := c.items[id]
-	if !exist {
-		return nil
+func New(name string, maxSize uint64) (Cache, error) {
+	if name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
 	}
 
-	c.moveItemToTheHead(id, i)
+	c := &cache{
+		list: list.New(),
 
-	return i.value
+		name:     name,
+		maxSize:  maxSize,
+		elements: make(map[string]*list.Element),
+	}
+
+	return c, nil
 }
 
-func (c *cache) Set(id string, value interface{}) {
-	if id == "" {
-		return
+func (c *cache) Get(key string) ([]byte, error) {
+	if key == "" {
+		return nil, fmt.Errorf("empty key")
 	}
 
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 
-	i, exist := c.items[id]
-	if !exist {
-		if c.isFull() {
+	if element, exist := c.elements[key]; exist {
+		c.list.MoveToFront(element)
+
+		return element.Value.(item).value, nil
+	}
+
+	return nil, nil
+}
+
+func (c *cache) Set(key string, value []byte) error {
+	if key == "" {
+		return fmt.Errorf("empty key")
+	}
+
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+
+	if element, ok := c.elements[key]; ok {
+		c.list.MoveToFront(element)
+
+		item := element.Value.(item)
+		oldItemSize := len(item.value)
+		newItemSize := len(value)
+
+		c.currentSize -= uint64(oldItemSize)
+		c.currentSize += uint64(newItemSize)
+
+		item.value = value
+	} else {
+		itemSize := len(value)
+
+		c.currentSize += uint64(itemSize)
+		c.elements[key] = c.list.PushFront(item{
+			key:   key,
+			value: value,
+		})
+
+		for c.currentSize >= c.maxSize {
 			c.removeLastItem()
 		}
-
-		i = &item{
-			value:      value,
-			previousID: c.firstID,
-		}
 	}
 
-	c.moveItemToTheHead(id, i)
+	return nil
 }
 
 func (c *cache) removeLastItem() {
-	lastID := c.lastID
-	c.lastID = c.items[lastID].nextID
+	element := c.list.Back()
+	item := element.Value.(item)
+	itemSize := len(item.value)
 
-	if c.lastID != "" {
-		c.items[c.lastID].previousID = ""
-	}
+	delete(c.elements, item.key)
 
-	delete(c.items, lastID)
-}
-
-func (c *cache) moveItemToTheHead(id string, i *item) {
-	if c.lastID == "" {
-		c.lastID = id
-	}
-
-	if i.previousID != "" && i.previousID != c.lastID {
-		c.items[i.previousID].nextID = i.nextID
-	}
-
-	if i.nextID != "" {
-		c.items[i.nextID].previousID = i.previousID
-	}
-
-	if c.firstID != "" {
-		c.items[c.firstID].nextID = id
-	}
-
-	i.previousID = c.firstID
-	i.nextID = ""
-
-	c.firstID = id
-	c.items[id] = i
-}
-
-func (c *cache) isFull() bool {
-	return len(c.items) == c.size
+	c.list.Remove(element)
+	c.currentSize -= uint64(itemSize)
 }

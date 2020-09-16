@@ -1,37 +1,59 @@
 package lrucache
 
 import (
-	"fmt"
+	"bytes"
+	"container/list"
 	"strconv"
 	"testing"
 )
 
 func TestNew(t *testing.T) {
-	c := New(10)
+	c, err := New("test-new", 10)
+	if err != nil {
+		t.Fatalf("failed creating new cache: %v", err)
+	}
 
 	if c == nil {
-		t.Fail()
+		t.Fatalf("cache is nil")
 	}
 }
 
-func TestLimit(t *testing.T) {
-	c := New(10)
+func TestMaxSize(t *testing.T) {
+	c, err := New("test-limit", 10)
+	if err != nil {
+		t.Fatalf("failed creating new cache: %v", err)
+	}
 
 	for i := 1; i <= 20; i++ {
-		c.Set(strconv.Itoa(i), i)
+		key := strconv.Itoa(i)
+		value := []byte(key)
 
-		if i > 10 && c.Get(strconv.Itoa(i-10)) != nil {
-			t.Fail()
+		if err := c.Set(key, value); err != nil {
+			t.Fatal(err)
+			return
+		}
+
+		item, err := c.Get(key)
+		if err != nil {
+			t.Fatal(err)
+			return
+		}
+
+		if i > 10 && item == nil {
+			t.Fatalf("item not found for i:%d", i)
 		}
 	}
 
-	if len(c.(*cache).items) > 10 {
-		t.Fail()
+	if len(c.(*cache).elements) > 10 {
+		t.Fatalf("cache has more then 10 elements")
 	}
 }
 
 func TestSequence(t *testing.T) {
-	c := New(4)
+	c, err := New("test-sequence", CacheSizeMB)
+	if err != nil {
+		t.Fatalf("failed creating new cache: %v", err)
+	}
 
 	expected := map[int][]int{
 		0:  {7},
@@ -49,7 +71,7 @@ func TestSequence(t *testing.T) {
 		12: {4, 0, 3, 2},
 	}
 
-	getKeys := func(m map[string]*item) []string {
+	getKeys := func(m map[string]*list.Element) []string {
 		keys := make([]string, len(m))
 		i := 0
 		for k := range m {
@@ -60,20 +82,23 @@ func TestSequence(t *testing.T) {
 		return keys
 	}
 
-	for index, value := range []int{7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2} {
-		c.Set(strconv.Itoa(value), value)
+	for index, v := range []int{7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2} {
+		key := strconv.Itoa(v)
+		value := []byte(key)
 
-		if len(c.(*cache).items) != len(expected[index]) {
-			t.Fail()
+		if err := c.Set(key, value); err != nil {
+			t.Fatal(err)
+			return
 		}
 
-		fmt.Printf("%v\n", getKeys(c.(*cache).items))
-
 		for _, want := range expected[index] {
-			got := c.Get(strconv.Itoa(want))
+			wantKey := strconv.Itoa(want)
+			wantValue := []byte(wantKey)
 
-			if want != got {
-				t.Fatalf("want (%v), got (%v), not in %v", want, got, getKeys(c.(*cache).items))
+			got, _ := c.Get(wantKey)
+
+			if got == nil || bytes.Compare(wantValue, got) != 0 {
+				t.Fatalf("want (%v), got (%v), not in %v", wantValue, got, getKeys(c.(*cache).elements))
 			}
 		}
 	}
