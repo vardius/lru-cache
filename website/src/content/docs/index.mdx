@@ -1,0 +1,138 @@
+---
+title: An LRU cache for Go
+description: A least recently used cache for Go. Generic, safe for concurrent use, exact in its eviction order, and allocation-free after New for string and number keys.
+template: splash
+hero:
+  title: A fixed-size cache, <span class="accent">no allocations</span>
+  tagline: Keep the entries you used last and evict the rest. Typed with generics, safe from any goroutine, and with string or number keys it allocates nothing after New, eviction included.
+  actions:
+    - text: Get started
+      link: getting-started/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/vardius/lru-cache
+      icon: github
+      variant: minimal
+---
+
+import { CardGrid, Card, LinkButton, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+import BenchmarkChart from '../../components/BenchmarkChart.astro';
+import Stats from '../../components/Stats.astro';
+import { comparison } from '../../data/benchmarks';
+
+export const evicting = comparison.set.find((r) => r.scenario === 'New key, evicting');
+
+<Stats />
+
+<div class="landing-section">
+
+<p class="eyebrow">Features</p>
+
+## What you get
+
+<CardGrid>
+	<Card title="Typed" icon="approve-check">
+		`Cache[K, V]` takes any comparable key and any value. `Get` returns a `V` and whether the key was there,
+		so a stored zero value is never mistaken for a miss.
+	</Card>
+	<Card title="Exact LRU order" icon="list-format">
+		`Get` and `Set` both count as a use, and the entry evicted is always the least recently used. Tests check it
+		against a model cache with random operations.
+	</Card>
+	<Card title="No allocations after New" icon="rocket">
+		`New` makes room for every entry, and a new key in a full cache takes the evicted one's place. With keys of
+		strings, numbers or structs of them, nothing allocates after that; tests guard every count.
+	</Card>
+	<Card title="Safe for concurrent use" icon="padlock">
+		One lock guards the cache, and keys are hashed before taking it. A panic on an unhashable key never leaves
+		it locked.
+	</Card>
+	<Card title="Compact" icon="database">
+		Entries live in one slice, found through an index of 16 to 32 bytes per entry. The garbage collector scans
+		one slice, not an object per entry.
+	</Card>
+	<Card title="Small API" icon="puzzle">
+		`New`, `Get`, `Set`, `Delete` and `Len`. Nothing to configure and no dependencies beyond the standard library.
+	</Card>
+</CardGrid>
+
+</div>
+
+<div class="landing-section">
+
+<p class="eyebrow">Performance</p>
+
+## Evicting without allocating
+
+<div class="landing-lead">
+	The untagged version allocated a list element and an entry for every new key. v1 reuses the evicted entry's place
+	and finds it through an index of its own: setting a new key in a full cache went from {evicting.before.ns.toFixed(1)} ns and
+	{evicting.before.allocs} allocations to {evicting.after.ns.toFixed(1)} ns and none.
+</div>
+
+<Tabs syncKey="op">
+<TabItem label="Get">
+<BenchmarkChart title="Time per Get" rows={comparison.get} />
+</TabItem>
+<TabItem label="Set">
+<BenchmarkChart title="Time per Set on a full cache" rows={comparison.set} />
+</TabItem>
+<TabItem label="Fill">
+<BenchmarkChart title="Time to make and fill a cache" rows={comparison.fill} />
+</TabItem>
+<TabItem label="Parallel">
+
+With 16 goroutines at once, the time is wall time per lookup across all of them, so it measures throughput.
+
+<BenchmarkChart title="Time per lookup" rows={comparison.parallel} />
+</TabItem>
+</Tabs>
+
+<LinkCard title="How these were measured" href="benchmarks/" description="Methodology, the full v1 suite, and how to run it yourself." />
+
+</div>
+
+<div class="landing-section">
+
+<p class="eyebrow">Upgrading</p>
+
+## Coming from the untagged version
+
+<div class="landing-lead">
+	The cache is generic now and its capacity is a number of entries. Nothing returns an error, and `Get` says whether
+	the key was there. The untagged version's bugs are fixed: `Set` of an existing key stores the new value.
+</div>
+
+<div class="compare">
+
+```go title="untagged"
+c, err := lrucache.New("pages", 10*lrucache.MB)
+if err != nil {
+	return err
+}
+if err := c.Set("/about", body); err != nil {
+	return err
+}
+body, err := c.Get("/about") // nil if missing
+```
+
+```go title="v1"
+c := lrucache.New[string, []byte](1000)
+c.Set("/about", body)
+body, ok := c.Get("/about")
+```
+
+</div>
+
+<LinkCard title="Migration guide" href="migrating-from-the-untagged-version/" description="Every call and its v1 form, choosing a capacity, and the behaviour changes to know about." />
+
+</div>
+
+<div class="cta not-content">
+	<h2>Cache your first values in five minutes</h2>
+	<p>Install the module, put a cache in front of a slow call, and see it hit. The guide covers eviction and concurrency too.</p>
+	<div class="cta-actions">
+		<LinkButton href="getting-started/" icon="right-arrow">Get started</LinkButton>
+		<LinkButton href="get-and-set/" variant="minimal">Read the docs</LinkButton>
+	</div>
+</div>

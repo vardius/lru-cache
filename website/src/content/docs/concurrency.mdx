@@ -1,0 +1,49 @@
+---
+title: Concurrency
+description: How a cache shared by many goroutines stays consistent, what its one lock costs under load, and splitting a cache into shards.
+---
+
+import { Aside, Code } from '@astrojs/starlight/components';
+import example from '../../../../examples/sharded/main.go?raw';
+import { suite } from '../../data/benchmarks';
+
+export const alone = suite.find((r) => r.benchmark === 'Get');
+export const loaded = suite.find((r) => r.benchmark === 'Parallel');
+
+A `Cache` is safe for concurrent use: any number of goroutines can call its methods at once, with no lock of their own.
+
+## One lock
+
+Every method takes the cache's one `sync.Mutex`. `Get` takes it too, because a hit moves the key to the front of
+the order of use: even reads change the cache, so a read-write lock would gain nothing.
+
+The lock is held only for the cache's own work. Each method hashes its key before taking it, so the hashing of
+one call overlaps the work of another, and a key that panics while being hashed never leaves the cache locked.
+
+## Under load
+
+A lock is cheap until goroutines wait for it. A hit costs {alone.ns.toFixed(1)} ns from one goroutine. In the read-through
+benchmark, where 16 goroutines at once get keys and set those they miss, the cache gets through one lookup every
+{loaded.ns.toFixed(0)} ns: that is wall time per call across all of them, so it measures throughput, not how long one call waits.
+
+That is the price of waiting when goroutines do nothing but use the cache. When they do real work between calls,
+such as handling a request or reading a file, they spend less of their time waiting.
+
+## Splitting a cache into shards
+
+When the lock does become the bottleneck, spread the keys over several caches, each with its own lock.
+A hash of the key picks the cache, so the same key always lands in the same one:
+
+<Code code={example} lang="go" title="examples/sharded/main.go" />
+
+Run it to see the difference on your machine:
+
+```sh
+go run ./examples/sharded
+```
+
+<Aside type="caution" title="Shards change what is evicted">
+Each shard evicts on its own. The entry that goes is the least recently used of its shard, not of the whole cache,
+and one shard can be full while another has room, so a sharded cache can evict before it holds its full capacity.
+Shard only when measurements show goroutines waiting on the cache.
+</Aside>

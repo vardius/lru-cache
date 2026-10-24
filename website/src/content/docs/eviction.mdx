@@ -1,0 +1,60 @@
+---
+title: Eviction
+description: Which entry goes when a full cache gets a new key, what counts as a use, and how to choose a capacity.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+A cache holds up to its capacity of entries. When `Set` adds a new key to a full cache, the entry used least recently
+is evicted to make room. Nothing else evicts: there are no timeouts and no background work.
+
+## What counts as a use
+
+| Call | Order of use | Evicts |
+| --- | --- | --- |
+| `Get`, key there | the key becomes the most recent | nothing |
+| `Get`, key missing | unchanged | nothing |
+| `Set`, new key | the key becomes the most recent | the least recent entry, if the cache is full |
+| `Set`, key there | the key becomes the most recent | nothing: the value is replaced |
+| `Delete` | the key is gone | nothing, and its place is free |
+| `Len` | unchanged | nothing |
+
+For example, with room for two, and the entries listed from least to most recently used:
+
+```go
+c := lrucache.New[string, int](2)
+c.Set("tea", 450)    // tea
+c.Set("cake", 300)   // tea, cake
+c.Get("tea")         // cake, tea
+c.Set("coffee", 500) // tea, coffee: cake was used least recently
+```
+
+The order is exact: the entry evicted is always the least recently used one in the whole cache.
+
+## Choosing a capacity
+
+The capacity counts entries, not bytes. The cache takes values of any type, and can't know what one costs to keep:
+a `[]byte` header says nothing about the array behind it, and a pointer nothing about what it points at.
+
+To bound memory, divide what you can spend by the size of a typical value, keys included. A cache of pages
+around 10 KB each with 10 MB to spare holds 1,000:
+
+```go
+pages := lrucache.New[string, []byte](1000)
+```
+
+Besides what your keys and values point at, the cache keeps for every entry a struct of a `K`, a `V` and three 32-bit
+integers, with whatever padding Go puts between them, and 16 to 32 bytes of index. For string keys and byte slice
+values, that is 56 bytes and the index: 72 to 88 bytes per entry.
+`New` allocates it all at once, so a cache's own memory is fixed from the start.
+
+<Aside title="Why the byte budget went">
+The untagged version took a budget in bytes but counted only `len(value)`: keys, list elements and map entries were
+free. A 1 MB budget of 8-byte values held 131,071 entries in 18.7 MB of heap, keys and values aside.
+v1 holds as many in 9 MB, and says what it counts.
+</Aside>
+
+## When values go
+
+An evicted or deleted entry's key and value are dropped at once: the cache keeps no reference to them,
+so the garbage collector can free them if nothing else holds them. A replaced value is dropped the same way.

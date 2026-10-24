@@ -1,0 +1,83 @@
+---
+title: Getting started
+description: Install lru-cache, put a cache in front of a slow call, and see what each of its methods is for.
+---
+
+import { Code, LinkCard, CardGrid, Steps } from '@astrojs/starlight/components';
+import match from '../../../../examples/match/main.go?raw';
+
+lru-cache keeps a fixed number of entries in memory and, when it is full, evicts the one used least recently
+to make room for a new key. There is one function and four methods:
+
+- **New** makes a cache with room for a number of entries.
+- **Get** returns a key's value and whether it was there, and makes it the most recently used.
+- **Set** stores a value, evicting the least recently used entry if the key is new and the cache is full.
+- **Delete** removes a key, and **Len** counts the entries.
+
+## Install
+
+lru-cache needs Go 1.26 or newer.
+
+```sh
+go get github.com/vardius/lru-cache
+```
+
+## Your first cache
+
+This server answers whether a text matches a regular expression. Compiling a pattern costs far more than matching
+with it, so the server keeps the 256 patterns it used last compiled, and compiles a pattern only when it isn't cached:
+
+<Code code={match} lang="go" title="examples/match/main.go" />
+
+## Run it
+
+<Steps>
+
+1. From a clone of the repository, start the server:
+
+   ```sh
+   go run ./examples/match
+   ```
+
+2. In another terminal, ask it twice. The first request compiles `^go` and caches it; the second finds it in the cache:
+
+   ```sh
+   curl 'localhost:8080/match?pattern=^go&text=gopher'
+   curl 'localhost:8080/match?pattern=^go&text=mongo'
+   ```
+
+   ```txt
+   true
+   false
+   ```
+
+3. Send a pattern that doesn't compile. The server answers 400 with the error, and nothing is cached:
+
+   ```sh
+   curl 'localhost:8080/match?pattern=(&text=anything'
+   ```
+
+   ```txt
+   error parsing regexp: missing closing ): `(`
+   ```
+
+</Steps>
+
+## What just happened
+
+- `lrucache.New[string, *regexp.Regexp](256)` made a cache from pattern to compiled expression, with room for 256.
+  The type parameters are the key's and the value's types, so `Get` returns a `*regexp.Regexp`, not an `interface{}`.
+- `Get` reported a miss with `false` the first time, and the server compiled the pattern and `Set` it.
+- The second request found the pattern, and that `Get` made it the most recently used.
+- Once 256 patterns are cached, setting a new one evicts the one used longest ago.
+- Handlers run on goroutines of their own. The cache is safe for concurrent use, so they share it with no lock of
+  their own.
+
+## Next steps
+
+<CardGrid>
+	<LinkCard title="Get and Set" href="../get-and-set/" description="Every method: hits and misses, replacing values, deleting, and what keys can be." />
+	<LinkCard title="Eviction" href="../eviction/" description="What counts as a use, and how to choose a capacity." />
+	<LinkCard title="Concurrency" href="../concurrency/" description="One lock, what it costs under load, and splitting a cache into shards." />
+	<LinkCard title="Benchmarks" href="../benchmarks/" description="What each call costs, and how v1 compares with the untagged version." />
+</CardGrid>

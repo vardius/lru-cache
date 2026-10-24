@@ -1,0 +1,89 @@
+---
+title: Get and Set
+description: Every method of the cache, what a hit and a miss return, replacing and deleting entries, and what keys can be.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+```go
+func New[K comparable, V any](capacity int) *Cache[K, V]
+
+func (c *Cache[K, V]) Get(key K) (V, bool)
+func (c *Cache[K, V]) Set(key K, value V)
+func (c *Cache[K, V]) Delete(key K)
+func (c *Cache[K, V]) Len() int
+```
+
+## New
+
+`New` returns an empty cache with room for `capacity` entries. The type parameters are the key's and the value's types:
+
+```go
+sessions := lrucache.New[string, Session](10_000)
+```
+
+`New` makes room for every entry at once, so the cache allocates nothing afterwards, unless hashing makes a key
+escape to the heap: see below. The capacity is at least 1
+and at most `math.MaxInt32 - 1`; anything else panics. A `Cache` is used through the pointer `New` returns:
+its zero value isn't usable.
+
+## Get
+
+`Get` returns the value stored for a key and `true`, or the zero value and `false` when the key isn't there.
+The bool tells a stored zero value from a missing key:
+
+```go
+c := lrucache.New[string, int](10)
+c.Set("stock", 0)
+
+c.Get("stock")   // 0, true
+c.Get("missing") // 0, false
+```
+
+A hit makes the key the most recently used entry. A miss changes nothing.
+
+## Set
+
+`Set` stores a value for a key and makes the key the most recently used entry.
+If the key is already cached, its value is replaced and nothing is evicted.
+If the key is new and the cache is full, the least recently used entry is evicted first:
+
+```go
+c := lrucache.New[string, string](2)
+c.Set("a", "first")
+c.Set("b", "second")
+c.Set("a", "replaced") // still 2 entries
+c.Set("c", "third")    // evicts b, used least recently
+```
+
+## Delete and Len
+
+`Delete` removes a key and its value; it does nothing if the key isn't there. The entry's place is free at once,
+so the next new key evicts nothing. `Len` returns the number of entries, at most the capacity.
+
+```go
+c.Delete("a")
+c.Len() // 1
+```
+
+## Values aren't copied
+
+The cache stores what you give it. A slice, map or pointer stored with `Set` shares its contents with the caller,
+and so does what `Get` returns.
+
+<Aside type="caution" title="Don't change a value after storing it">
+Changing a cached slice's elements or a cached struct's fields through a pointer changes them for every goroutine that
+gets that key. Store a copy, or treat values as read-only once they are cached.
+</Aside>
+
+## Keys
+
+A key can be any comparable type: strings, numbers, structs of those, pointers, interfaces. Three things to know:
+
+- **A NaN is never equal to itself**, so every `Set` with a NaN key adds an entry that no `Get` finds,
+  until eviction removes it.
+- **An interface key holding a type that can't be compared**, such as a slice, makes the call panic, as a map would.
+  The cache hashes the key before taking its lock, so the panic doesn't leave the cache locked.
+- **Hashing makes a key escape to the heap** when its type holds pointers other than strings.
+  For an interface key, that means boxing it allocates: on a `Cache[any, V]`, `Get(n)` allocates for an int `n` of 256 or more.
+  Keys of strings, numbers, or structs of them allocate nothing.
